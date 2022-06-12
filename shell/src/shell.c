@@ -2,6 +2,7 @@
 #include <alloca.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "shell.h"
 
@@ -91,4 +92,26 @@ void cleanParseCommand(ParsedCommand *const ps) {
 
   //free the memory given to the array 
   free(ps->arguments); 
+}
+
+pid_t executeCommand(ParsedCommand *const ps, int pipeInput, int pipeOutput){
+  pid_t childId = fork();
+
+  if (childId == -1){
+    fprintf(stderr,"Fork error\n") ;
+    _exit(2);
+
+  }
+
+  if (childId == 0){//childe process
+    close(pipeInput);// child does not read
+    dup2(pipeOutput, 1);// redirect staout
+    execvp(ps->executable, ps->arguments);//
+    fprintf(stderr, "execvp error\n");
+    _exit(3);
+  }
+
+  return childId;
+
+
 }

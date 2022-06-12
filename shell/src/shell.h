@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unistd.h>
+
 /*
  * DataType: string
  *
@@ -66,5 +68,16 @@ ParsedCommand ParseCommand(const String * const );
  * */
 void cleanParseCommand(ParsedCommand * const );
 
+/*
+ * Function: executeCommand
+ *
+ * takes a command and a pipe, runs the commands and stores its output 
+ * in the pipe
+ *
+ * first element in the pipe is an interger with the number of bytes 
+ * stored in the pipe, followed by the content
+ *
+ * */
+pid_t executeCommand(ParsedCommand * const, int, int );
 
 
