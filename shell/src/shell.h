@@ -10,10 +10,10 @@
  * */
 
 typedef struct {
-  char * const c_string;
+  char *const c_string;
   unsigned int length;
 
-}String;
+} String;
 
 /*
  * Function: cleanString
@@ -46,11 +46,11 @@ unsigned int countRepetions(const String *const, const char);
  * this struct holds a command and its arguments
  * */
 
-typedef struct{
-  char * executable;
-  char ** arguments;
+typedef struct {
+  char *executable;
+  char **arguments;
   unsigned int argc;
-}ParsedCommand;
+} ParsedCommand;
 
 /*
  * Function: ParsedCommand
@@ -58,7 +58,7 @@ typedef struct{
  * Takes a string and returns its tokens properly parsed
  *
  * */
-ParsedCommand ParseCommand(const String * const );
+ParsedCommand ParseCommand(const String *const);
 
 /*
  * Function: cleanParsedCommand
@@ -66,18 +66,29 @@ ParsedCommand ParseCommand(const String * const );
  * takes a command and releases its resources
  *
  * */
-void cleanParseCommand(ParsedCommand * const );
+void cleanParseCommand(ParsedCommand *const);
 
 /*
  * Function: executeCommand
  *
- * takes a command and a pipe, runs the commands and stores its output 
+ * takes a command and a pipe, runs the commands and stores its output
  * in the pipe
  *
- * first element in the pipe is an interger with the number of bytes 
- * stored in the pipe, followed by the content
+ * */
+pid_t executeCommand(ParsedCommand *const, int, int);
+
+/*
+ * Function: getPromt
+ *
+ * returns the promt that is shown to the user
  *
  * */
-pid_t executeCommand(ParsedCommand * const, int, int );
+String getPromt(); 
+/*
+ * Function: cd_command
+ *
+ * this Function implements the ability of changing directory
+ *
+ * */
 
-
+void cd_command(const char *const );
