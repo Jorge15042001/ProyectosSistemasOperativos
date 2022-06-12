@@ -1,5 +1,7 @@
 # Shell program
 
+* The source code is in /src folder
+
 ## Compilation
 
 ```bash
