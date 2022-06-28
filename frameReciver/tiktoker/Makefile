@@ -35,10 +35,31 @@ $(OBJ_DIR_2)/%.o: $(SRC_DIR_2)/%.c
 $(OUTPUT_2): $(OBJ_FILES_2)
 	$(CC)  -o $@ $^   $(CXXFLAGS_2)  
 
+###########################################################################
+# Oouput 3
+###########################################################################
+OUTPUT_3 := configurator
+SRC_DIR_3 := src/configurator
+OBJ_DIR_3 := build/obj/configurator
+SRC_FILES_3 := $(wildcard $(SRC_DIR_3)/*.c)
+OBJ_FILES_3 := $(patsubst $(SRC_DIR_3)/%.c,$(OBJ_DIR_3)/%.o,$(SRC_FILES_3))
+
+CXXFLAGS_3 := 
+
+$(OBJ_DIR_3)/%.o: $(SRC_DIR_3)/%.c
+	mkdir -p $(OBJ_DIR_3)
+	$(CC)   $(CXXFLAGS_3)   -c -o $@ $^  
+
+$(OUTPUT_3): $(OBJ_FILES_3)
+	$(CC)  -o $@ $^   $(CXXFLAGS_3)  
+
+###########################################################################
+# all 
+###########################################################################
+all: $(OUTPUT_1) $(OUTPUT_2) $(OUTPUT_3)
+
 clean :
 	rm -rf build
 	rm $(OUTPUT_1)
 	rm $(OUTPUT_2)
-
-all: $(OUTPUT_1) $(OUTPUT_2)
-
+	rm $(OUTPUT_3)
