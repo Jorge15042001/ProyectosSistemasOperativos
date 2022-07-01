@@ -26,7 +26,7 @@ OBJ_DIR_2 := build/obj/reciver
 SRC_FILES_2 := $(wildcard $(SRC_DIR_2)/*.c)
 OBJ_FILES_2 := $(patsubst $(SRC_DIR_2)/%.c,$(OBJ_DIR_2)/%.o,$(SRC_FILES_2))
 
-CXXFLAGS_2 := -lpthread
+CXXFLAGS_2 := -lpthread -lm -g
 
 $(OBJ_DIR_2)/%.o: $(SRC_DIR_2)/%.c
 	mkdir -p $(OBJ_DIR_2)
