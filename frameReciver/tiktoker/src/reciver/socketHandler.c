@@ -46,11 +46,10 @@ void *serveConection(void *param) {
   threadNode* tn = targs_ptr->tn;
 
     printf("fd thread %d \n",client_sockfd);
-    int it = 0;
-    char msg [100] ;
+    char msg [50] ;
   for (;;) {
     const int res = recv(client_sockfd, msg,100 , 0);
-    printf("%d %d %s\n",it++,res,msg);
+    printf("%s\n",msg);
     if (res == 0){
       printf("Se perdio la conexion\n");
       break;
