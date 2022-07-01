@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -52,14 +53,14 @@ typedef struct {
   const int socketFd;
   int *finished;
   int *msgRecived;
-  pthread_t parentThread;//remove
-  int id ;//remove
+  pthread_t parentThread; // remove
+  int id;                 // remove
 
 } socketTimeOutArgs;
 
 void *socketTimeOut(void *param) {
   socketTimeOutArgs *st_ptr = (socketTimeOutArgs *)param;
-  printf("Timer began %d\n",st_ptr->id);
+  printf("Timer began %d\n", st_ptr->id);
   sleep(st_ptr->seconds);
   // if parent did not recived a message from socket while waiting
   if (*(st_ptr->msgRecived) == 0) {
@@ -68,7 +69,7 @@ void *socketTimeOut(void *param) {
   }
   // alert parent thread that the timer went off and the connection was closed
   *(st_ptr->finished) = 1;
-  printf("Timmer off%d\n",st_ptr->id);
+  printf("Timmer off%d\n", st_ptr->id);
 }
 
 void *serveConection(void *param) {
@@ -81,8 +82,8 @@ void *serveConection(void *param) {
   pthread_t timeOut_pid; //
   int msgRecived;
   int timerFinished;
-  socketTimeOutArgs skTO_arg = {TIME_OUT, client_sockfd, &timerFinished,
-                                &msgRecived,pthread_self(),1};
+  socketTimeOutArgs skTO_arg = {TIME_OUT,    client_sockfd,  &timerFinished,
+                                &msgRecived, pthread_self(), 1};
 
   circularBuffer buffer = createCircularBuffer(14 * 5);
 
@@ -92,56 +93,54 @@ void *serveConection(void *param) {
   printf("started socket thread %d \n", client_sockfd);
   char msg[50];
   while (1) {
-    // set timeout
-    skTO_arg.seconds = TIME_OUT;
-    skTO_arg.id =recivedPackages+1;
-    const int timerResponse =
-        pthread_create(&timeOut_pid, NULL, socketTimeOut, &skTO_arg);
-    if (timerResponse != 0) {
-      fprintf(stderr, "No se pudo iniciar timeout\n");
-      break;
-    }
-
-    //start timer
+    // start timer
     struct timeval start;
     gettimeofday(&start, NULL);
+    //timeout
+    struct timeval tv = {6, 0};
+
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET((unsigned int)client_sockfd, &rfds);
+
+    const int retval = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+    if (retval == -1) {
+      fprintf(stderr, "Select error\n");
+      break;
+    }
+    if (retval == 0){
+      printf("Conexion timeout\n");
+      break;
+    }
     // wait until a message arive at the socket
     const int res = recv(client_sockfd, msg, 100, 0);
-    //end timer
+    // end timer
     struct timeval end;
     gettimeofday(&end, NULL);
 
-    // alerts a message have arrived
-    msgRecived = 1;
-    // if the timer went off
-    if (timerFinished == 1){
-      printf("timeOUT exiting reading loop\n");
-      break;
-    }
-    // if the timer did not went off, kill the thread
-    else
-      pthread_cancel(timeOut_pid);
-    // if connection was lost
     if (res == 0) {
       printf("Se perdio la conexion\n");
       break;
     }
 
+
     // time
     long secs_used = (end.tv_sec - start.tv_sec);
-    if (secs_used == 0)secs_used = 1;
+    if (secs_used == 0)
+      secs_used = 1;
     recivedPackages++;
     waitingTime += secs_used;
     const float avgPackageVel = (float)recivedPackages / waitingTime;
     const int estimatedFramesIn30Seconds = (int)ceil(avgPackageVel * 30);
 
     // if the buffer doesnot have enough space for 30seconds of video +2 frames
-    printf("used: %ld estimated: %d %f \n",secs_used, estimatedFramesIn30Seconds, avgPackageVel);
+    printf("used: %ld estimated: %d %f \n", secs_used,
+           estimatedFramesIn30Seconds, avgPackageVel);
     if (abs((int)(buffer.capacity / 14) - estimatedFramesIn30Seconds) > 5) {
       printf("resizing\n");
       resizeCircularBuffer(&buffer, (estimatedFramesIn30Seconds + 3) * 14);
     }
-    printf("%s, len: %ld\n", msg,strlen(msg));
+    printf("%s, len: %ld\n", msg, strlen(msg));
     addCircularBuffer(&buffer, msg, strlen(msg));
     printCircularBuffer(&buffer);
   }
@@ -149,6 +148,6 @@ void *serveConection(void *param) {
   // add thread to readyqueue
   addThread(targs_ptr->tq, tn);
   // colse the socket connection
-  cleanCircularBuffer(&buffer);
   close(client_sockfd);
+  cleanCircularBuffer(&buffer);
 }
