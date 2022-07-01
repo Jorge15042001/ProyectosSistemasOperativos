@@ -1,9 +1,16 @@
+#define _GNU_SOURCE
+
 #include "ziggurat.h"
 
+#include <arpa/inet.h>
 #include <math.h>
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -45,26 +52,55 @@ int main(int argc, char *argv[]) {
   }
 
   Tdiff = Tmax - Tmin;
-  Tmean = Tmin + floor(Tdiff / 2);
-  Tsd = sqrt(Tmean / 3);
-  printf(" %14f %d %d \n", Tsd, Tdiff, Tmean);
+  Tmean = Tmin + floor(Tdiff / 2.0);
+  Tsd = sqrt(Tmean / 3.);
+  /** printf(" %14f %d %d \n", Tsd, Tdiff, Tmean); */
 
-  printf("\n");
-  printf("Tiktoker\n");
+  /** printf("\n"); */
+  /** printf("Tiktoker\n"); */
 
   r4_nor_setup(kn, fn, wn);
 
   srand(time(NULL)); // Initialization, should only be called once.
   seed = rand();
 
+  /*
+   * IPC communication, usiing sockets
+   * */
+  int sockfd = socket(PF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1) {
+    perror("Socket create failed.\n");
+    return -1;
+  }
+  struct sockaddr_in address;
+
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = inet_addr("127.0.0.1");
+  address.sin_port = htons(7734);
+  int len = sizeof(address);
+
+  int result = connect(sockfd, (struct sockaddr *)&address, len);
+  if (result == -1) {
+    perror("Error has occurred");
+    exit(-1);
+  }
+
   for (i = 1; i <= Fmax; i++) { // Remover mensajes para probar
     value = r4_nor(&seed, kn, fn, wn);
     Tsleep = floor(value * Tsd + Tmean);
-    printf("frame %d in %d seconds \n", i, Tsleep);
+    /** printf("frame %d in %d seconds \n", i, Tsleep); */
     sleep(Tsleep);
     // INSERTAR IPC PARA ENVIO DE MENSAJES AQUI!!
-    printf("frame %d sent to Tiktok \n", i);
-    printf("prob %f \n", (1.0 * (rand()) / RAND_MAX));
+    char *msg;
+    int msgStatus = asprintf(&msg, "/frame/%03d/%03d", i, Fmax);
+    if (msgStatus == -1) {
+      fprintf(stderr, "Error generating message\n");
+      exit(-1);
+    }
+    const int rc = write(sockfd, msg, strlen(msg));
+    free(msg);
+
+    /** printf("prob %f \n", (1.0 * (rand()) / RAND_MAX)); */
     if ((Prob == 1) && (1.0 * (rand()) / RAND_MAX) > 0.99) {
       printf("Video conection lost \n");
       return (EXIT_SUCCESS); // No more frames
