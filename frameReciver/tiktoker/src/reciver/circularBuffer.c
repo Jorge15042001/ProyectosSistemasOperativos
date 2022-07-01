@@ -8,6 +8,14 @@ circularBuffer createCircularBuffer(const unsigned int capacity) {
   circularBuffer cb = {0, 0, 0, capacity, buffer};
   return cb;
 }
+void cleanCircularBuffer(circularBuffer *cb){
+  free(cb->buffer);
+  cb->buffer = NULL;
+  cb->size =0;
+  cb->writeIt = 0;
+  cb->readIt = 0;
+  cb->capacity = 0;
+}
 
 void addCircularBuffer(circularBuffer *cb, char *data, const unsigned int N) {
   // TODO: valide N is grater and cb->size
@@ -35,6 +43,7 @@ void resizeCircularBuffer(circularBuffer*cb, const unsigned int newCapacity){
 
   if (newCapacity == oldCapacity)return;
 
+  printf("Resizing: start\n");
   char * newBuff =  malloc(newCapacity);
 
   if (newCapacity > oldSize){
@@ -63,19 +72,16 @@ void resizeCircularBuffer(circularBuffer*cb, const unsigned int newCapacity){
   cb->capacity = newCapacity;
   cb->readIt = 0;
 
+  printf("Resizing: done\n");
 
 
 }
 
 void printCircularBuffer(circularBuffer*cb ){
-  printf("Buffer[%d,%d,%d]{",cb->readIt,cb->writeIt,cb->size);
-  for (int i = 0 ; i < cb->size ; i++){
-    printf("%c",getCharAt(cb, i));
-  }
-  printf("}\n");
-  printf("{");
-  for (int i = 0 ; i < cb->capacity ; i++){
-    printf("%c",cb->buffer[i]);
-  }
-  printf("}\n");
+  printf("Buffer[%d/%d]\n",cb->size,cb->capacity);
+  /** printf("{"); */
+  /** for (int i = 0 ; i < cb->size ; i++){ */
+  /**   printf("%c",getCharAt(cb, i)); */
+  /** } */
+  /** printf("}\n"); */
 }
