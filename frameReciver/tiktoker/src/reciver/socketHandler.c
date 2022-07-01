@@ -1,4 +1,5 @@
 #include "socketHandler.h"
+#include "circularBuffer.h"
 #include "threadQueue.h"
 
 #include <arpa/inet.h>
@@ -6,6 +7,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -44,12 +46,16 @@ void *serveConection(void *param) {
   threadArgs* targs_ptr = (threadArgs*) param;
   const int client_sockfd = targs_ptr->sockfd;
   threadNode* tn = targs_ptr->tn;
+  circularBuffer buffer = createCircularBuffer(14*2);
 
     printf("fd thread %d \n",client_sockfd);
     char msg [50] ;
   for (;;) {
     const int res = recv(client_sockfd, msg,100 , 0);
-    printf("%s\n",msg);
+    /** printf("%ld,%s\n",strlen(msg),msg); */
+    addCircularBuffer(&buffer,msg, strlen(msg));
+    printCircularBuffer(&buffer);
+
     if (res == 0){
       printf("Se perdio la conexion\n");
       break;
