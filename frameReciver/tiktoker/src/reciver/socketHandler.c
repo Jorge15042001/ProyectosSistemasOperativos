@@ -3,6 +3,7 @@
 #include "threadQueue.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -12,7 +13,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
 int startSocket(const int port) {
 
@@ -38,32 +38,30 @@ int startSocket(const int port) {
     exit(-1);
   }
 
-  printf("Servidor iniciado con exito: [%d]\n",server_sockfd);
+  printf("Servidor iniciado con exito: [%d]\n", server_sockfd);
   return server_sockfd;
 }
 void *serveConection(void *param) {
 
-  threadArgs* targs_ptr = (threadArgs*) param;
+  threadArgs *targs_ptr = (threadArgs *)param;
   const int client_sockfd = targs_ptr->sockfd;
-  threadNode* tn = targs_ptr->tn;
-  circularBuffer buffer = createCircularBuffer(14*2);
+  threadNode *tn = targs_ptr->tn;
+  circularBuffer buffer = createCircularBuffer(14 * 2);
 
-    printf("fd thread %d \n",client_sockfd);
-    char msg [50] ;
+  printf("fd thread %d \n", client_sockfd);
+  char msg[50];
   for (;;) {
-    const int res = recv(client_sockfd, msg,100 , 0);
+    const int res = recv(client_sockfd, msg, 100, 0);
     /** printf("%ld,%s\n",strlen(msg),msg); */
-    addCircularBuffer(&buffer,msg, strlen(msg));
+    addCircularBuffer(&buffer, msg, strlen(msg));
     printCircularBuffer(&buffer);
 
-    if (res == 0){
+    if (res == 0) {
       printf("Se perdio la conexion\n");
       break;
     }
   }
   addThread(targs_ptr->tq, tn);
-  printf("threadQueue tiene %d\n",targs_ptr->tq->length);
+  printf("threadQueue tiene %d\n", targs_ptr->tq->length);
   close(client_sockfd);
-
-
 }
