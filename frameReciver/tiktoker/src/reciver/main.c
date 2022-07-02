@@ -15,9 +15,6 @@
 static const int port = 7734;
 static unsigned int client_len = sizeof(struct sockaddr_in);
 
-int startSocket(const int port);
-void *serveConection(void *param);
-
 int main() {
   const int server_sockfd = startSocket(port);
   /** printf("Servidor corriendo en puerto %d\n",port); */
