@@ -21,7 +21,7 @@ void *serveConection(void *param);
 int main() {
   const int server_sockfd = startSocket(port);
   /** printf("Servidor corriendo en puerto %d\n",port); */
-  threadQueue tq = createThreadQueue(1);
+  threadQueue tq = createThreadQueue(8);
   /** printf("Cola de procesos lista lista \n"); */
 
   while (1) {
@@ -36,7 +36,6 @@ int main() {
     if (pthread_create(&readyTN->thread, NULL, serveConection, &targs) != 0) {
       fprintf(stderr, "No se pudo atender la peticion\n");
     }
-    /** pthread_join(readyTN->thread, NULL); */
   }
   printf("terminado servidor\n");
   cleanThreadQueue(&tq);
