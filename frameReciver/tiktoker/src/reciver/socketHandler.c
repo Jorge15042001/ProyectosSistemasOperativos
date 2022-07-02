@@ -19,6 +19,11 @@
 
 static int TIME_OUT = 10;
 static int TIME_REMOVE = 30;
+static const int FRAME_LEN = 7;
+
+static const char *PATH_FRAME = "/frame";
+static const char *PATH_SET = "/set";
+static const char *PATH_MONITOR = "/monitor";
 
 int startSocket(const int port) {
 
@@ -48,29 +53,16 @@ int startSocket(const int port) {
   return server_sockfd;
 }
 
-typedef struct {
-  unsigned int seconds;
-  const int socketFd;
-  int *finished;
-  int *msgRecived;
-  pthread_t parentThread; // remove
-  int id;                 // remove
+void reciveNewFrame(const int estimatedFramesIn30Seconds,
+                    circularBuffer *buffer, char *msg) {
 
-} socketTimeOutArgs;
-
-void *socketTimeOut(void *param) {
-  socketTimeOutArgs *st_ptr = (socketTimeOutArgs *)param;
-  printf("Timer began %d\n", st_ptr->id);
-  sleep(st_ptr->seconds);
-  // if parent did not recived a message from socket while waiting
-  if (*(st_ptr->msgRecived) == 0) {
-    close(st_ptr->socketFd);
-    printf("socked %d cerrado debido a timeOut\n", st_ptr->socketFd);
+  // if the buffer doesnot have enough space for 30seconds of video 
+  if (abs((int)(buffer->capacity / FRAME_LEN) - estimatedFramesIn30Seconds) > 5) {
+    resizeCircularBuffer(buffer, (estimatedFramesIn30Seconds + 3) * FRAME_LEN);
   }
-  // alert parent thread that the timer went off and the connection was closed
-  *(st_ptr->finished) = 1;
-  printf("Timmer off%d\n", st_ptr->id);
+  addCircularBuffer(buffer, msg+strlen(PATH_FRAME)+1, strlen(msg));
 }
+
 
 void *serveConection(void *param) {
 
@@ -79,24 +71,17 @@ void *serveConection(void *param) {
   threadNode *tn = targs_ptr->tn;
 
   // soket time out
-  pthread_t timeOut_pid; //
-  int msgRecived;
-  int timerFinished;
-  socketTimeOutArgs skTO_arg = {TIME_OUT,    client_sockfd,  &timerFinished,
-                                &msgRecived, pthread_self(), 1};
-
   circularBuffer buffer = createCircularBuffer(14 * 5);
 
   int waitingTime = 0;
   int recivedPackages = 0;
-
-  printf("started socket thread %d \n", client_sockfd);
+  /** printf("started socket thread %d \n", client_sockfd); */
   char msg[50];
   while (1) {
     // start timer
     struct timeval start;
     gettimeofday(&start, NULL);
-    //timeout
+    // timeout
     struct timeval tv = {6, 0};
 
     fd_set rfds;
@@ -108,7 +93,7 @@ void *serveConection(void *param) {
       fprintf(stderr, "Select error\n");
       break;
     }
-    if (retval == 0){
+    if (retval == 0) {
       printf("Conexion timeout\n");
       break;
     }
@@ -122,27 +107,17 @@ void *serveConection(void *param) {
       printf("Se perdio la conexion\n");
       break;
     }
-
-
-    // time
-    long secs_used = (end.tv_sec - start.tv_sec);
-    if (secs_used == 0)
-      secs_used = 1;
     recivedPackages++;
+    const long secs_used = (end.tv_sec - start.tv_sec)==0? 1:(end.tv_sec - start.tv_sec);
     waitingTime += secs_used;
-    const float avgPackageVel = (float)recivedPackages / waitingTime;
-    const int estimatedFramesIn30Seconds = (int)ceil(avgPackageVel * 30);
 
-    // if the buffer doesnot have enough space for 30seconds of video +2 frames
-    printf("used: %ld estimated: %d %f \n", secs_used,
-           estimatedFramesIn30Seconds, avgPackageVel);
-    if (abs((int)(buffer.capacity / 14) - estimatedFramesIn30Seconds) > 5) {
-      printf("resizing\n");
-      resizeCircularBuffer(&buffer, (estimatedFramesIn30Seconds + 3) * 14);
+    const int estimatedFramesIn30Seconds = (int)ceil((float)(recivedPackages) / waitingTime* 30);
+
+    if (strncmp(msg, PATH_FRAME, strlen(PATH_FRAME)) == 0) {
+      reciveNewFrame(estimatedFramesIn30Seconds,  &buffer, msg);
+    } else if (strncmp(msg, PATH_MONITOR, strlen(PATH_MONITOR)) == 0) {
+    } else if (strncmp(msg, PATH_SET, strlen(PATH_SET)) == 0) {
     }
-    printf("%s, len: %ld\n", msg, strlen(msg));
-    addCircularBuffer(&buffer, msg, strlen(msg));
-    printCircularBuffer(&buffer);
   }
   printf("End serving socket\n");
   // add thread to readyqueue
