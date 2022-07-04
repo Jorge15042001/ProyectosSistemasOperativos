@@ -11,6 +11,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+void showHelp() {
+  printf("Monitor program\n\n");
+  printf("Manual\n");
+  printf("-h \t\t Para monitorear el servidor\n");
+  printf("-t [int]\t Para cambiar el valor de timeOut en el servidor\n");
+  printf("-r [int]\t Para cambiar el valor de timeRemove en el servidor\n");
+  exit(-1);
+}
+
 typedef struct {
   int watch;
   int setTimeOut;
@@ -31,7 +40,7 @@ monitorArgs parseArgs(int argc, char **argv) {
   int tmpTimeRemove;
 
   int opt;
-  while ((opt = getopt(argc, argv, "wt:r:")) != -1) {
+  while ((opt = getopt(argc, argv, "hwt:r:")) != -1) {
     switch (opt) {
     case 'w':
       args.watch = 1;
@@ -53,6 +62,10 @@ monitorArgs parseArgs(int argc, char **argv) {
 
       args.setTimeRemove = 1;
       args.timeRemove = tmpTimeRemove;
+      break;
+    case 'h':
+    default:
+      showHelp();
       break;
     }
   }
@@ -92,10 +105,9 @@ void watchServer() {
   FD_SET((unsigned int)sockfd, &fds);
   struct timeval tv = {3, 0};
   const int retval = select(FD_SETSIZE, &fds, NULL, NULL, &tv);
-  if (retval == -1){
-    fprintf(stderr,"select error\n");
-  }
-  else if (retval == 0) {
+  if (retval == -1) {
+    fprintf(stderr, "select error\n");
+  } else if (retval == 0) {
     fprintf(stderr, "Time out\n");
   } else {
     ioctl(sockfd, FIONREAD, &size);
@@ -151,10 +163,10 @@ void setServerVar(char *var, int value) {
 int main(int argc, char **argv) {
   monitorArgs args = parseArgs(argc, argv);
 
-  if (args.watch)
-    watchServer();
   if (args.setTimeOut)
     setServerVar("timeout", args.timeOut);
   if (args.setTimeRemove)
     setServerVar("timeremove", args.timeRemove);
+  if (args.watch)
+    watchServer();
 }
