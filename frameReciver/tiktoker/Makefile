@@ -38,13 +38,13 @@ $(OUTPUT_2): $(OBJ_FILES_2)
 ###########################################################################
 # Oouput 3
 ###########################################################################
-OUTPUT_3 := configurator
-SRC_DIR_3 := src/configurator
-OBJ_DIR_3 := build/obj/configurator
+OUTPUT_3 := monitor
+SRC_DIR_3 := src/monitor
+OBJ_DIR_3 := build/obj/monitor
 SRC_FILES_3 := $(wildcard $(SRC_DIR_3)/*.c)
 OBJ_FILES_3 := $(patsubst $(SRC_DIR_3)/%.c,$(OBJ_DIR_3)/%.o,$(SRC_FILES_3))
 
-CXXFLAGS_3 := 
+CXXFLAGS_3 := -g
 
 $(OBJ_DIR_3)/%.o: $(SRC_DIR_3)/%.c
 	mkdir -p $(OBJ_DIR_3)

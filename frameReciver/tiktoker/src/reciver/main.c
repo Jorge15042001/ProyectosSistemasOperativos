@@ -1,3 +1,4 @@
+#include "serverStats.h"
 #include "socketHandler.h"
 #include "threadQueue.h"
 
@@ -16,10 +17,9 @@ static const int port = 7734;
 static unsigned int client_len = sizeof(struct sockaddr_in);
 
 int main() {
-  const int server_sockfd = startSocket(port);
-  /** printf("Servidor corriendo en puerto %d\n",port); */
   threadQueue tq = createThreadQueue(8);
-  /** printf("Cola de procesos lista lista \n"); */
+  serverStats serverState = createServerStats(8);
+  const int server_sockfd = startSocket(port);
 
   while (1) {
     struct sockaddr_in client_address;
@@ -29,11 +29,12 @@ int main() {
 
     // thread code
     threadNode *readyTN = getReadyThread(&tq);
-    threadArgs targs = {client_sockfd, &tq, readyTN};
+    threadArgs targs = {client_sockfd, &tq, readyTN,&serverState};
     if (pthread_create(&readyTN->thread, NULL, serveConection, &targs) != 0) {
       fprintf(stderr, "No se pudo atender la peticion\n");
     }
   }
   printf("terminado servidor\n");
   cleanThreadQueue(&tq);
+  cleanServerStats(&serverState);
 }

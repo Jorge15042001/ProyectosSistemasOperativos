@@ -43,7 +43,6 @@ void resizeCircularBuffer(circularBuffer*cb, const unsigned int newCapacity){
 
   if (newCapacity == oldCapacity)return;
 
-  printf("Resizing: start\n");
   char * newBuff =  malloc(newCapacity);
 
   if (newCapacity > oldSize){
@@ -72,16 +71,15 @@ void resizeCircularBuffer(circularBuffer*cb, const unsigned int newCapacity){
   cb->capacity = newCapacity;
   cb->readIt = 0;
 
-  printf("Resizing: done\n");
 
 
 }
 
 void printCircularBuffer(circularBuffer*cb ){
   printf("Buffer[%d/%d]\n",cb->size,cb->capacity);
-  /** printf("{"); */
-  /** for (int i = 0 ; i < cb->size ; i++){ */
-  /**   printf("%c",getCharAt(cb, i)); */
-  /** } */
-  /** printf("}\n"); */
+  printf("{");
+  for (int i = 0 ; i < cb->size ; i++){
+    printf("%c",getCharAt(cb, i));
+  }
+  printf("}\n");
 }

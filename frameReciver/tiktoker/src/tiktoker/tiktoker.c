@@ -14,7 +14,7 @@
 #include <time.h>
 #include <unistd.h>
 
-int Fmax = 100;
+const int Fmax = 100;
 
 int main(int argc, char *argv[]) {
   float fn[128];
@@ -88,15 +88,17 @@ int main(int argc, char *argv[]) {
   for (i = 1; i <= Fmax; i++) { // Remover mensajes para probar
     value = r4_nor(&seed, kn, fn, wn);
     Tsleep = floor(value * Tsd + Tmean);
-    /** printf("frame %d in %d seconds \n", i, Tsleep); */
+    if (Tsleep <= 0) Tsleep = Tmin;
     sleep(Tsleep);
     // INSERTAR IPC PARA ENVIO DE MENSAJES AQUI!!
     char *msg;
     int msgStatus = asprintf(&msg, "/frame/%03d/%03d", i, Fmax);
     if (msgStatus == -1) {
       fprintf(stderr, "Error generating message\n");
+      printf("early exit due to error\n");
       exit(-1);
     }
+    if (strlen(msg)==0)printf("sending empty frame\n");
     const int rc = write(sockfd, msg, strlen(msg));
     free(msg);
 
