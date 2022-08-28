@@ -1,5 +1,6 @@
 #pragma once
 #include <sys/time.h>
+#include <stdio.h>
 
 /*
  * struct Measurement
@@ -44,3 +45,21 @@ typedef struct{
   int sensorType;
   int sensorReading;
 } MeasurementSocket;
+
+
+
+typedef struct {
+  int sensorType;
+  double avg;
+  double stdDev;
+  double weight;
+  size_t measCount;
+} MesurementSummary;
+
+typedef struct {
+  double valueLid;
+  double valueAcc;
+  double valueGPS;
+  struct timeval time;
+  int isValid;
+} FinalMeasurement;

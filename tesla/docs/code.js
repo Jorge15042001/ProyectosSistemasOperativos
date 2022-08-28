@@ -18,7 +18,7 @@ function aceptarNuevaConexion() {
   sensoresActivos.add(nuevaConexion)//agregar
 
   //crear un thread para recibir datos de un sensor
-  thread(escucharConexion, nuevaConexion)
+  thread(escucharConexion, nuevaConexion);
 }
 
 

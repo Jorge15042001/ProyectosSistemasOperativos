@@ -58,6 +58,7 @@ struct ConnectionNode{
   int clientFD;
   ConnectionNode * next;
   MeasurementList measurements;
+  int isOpen ;
 };
 
 /*

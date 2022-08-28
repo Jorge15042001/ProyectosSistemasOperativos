@@ -38,6 +38,7 @@ void removeEverythingAfter(MeasurementList *const list,MeasurementNode *const me
   if (measure == NULL || measure->next == NULL) return;
 
   //put the list in valid state
+  pthread_mutex_lock(&list->lock );
   MeasurementNode * temp = measure;
   temp->next = NULL;
   size_t length = 0;
@@ -45,9 +46,9 @@ void removeEverythingAfter(MeasurementList *const list,MeasurementNode *const me
     length ++;
     start = start ->next;
   }
-
   //set new length
   list->length = length;
+  pthread_mutex_unlock(&list->lock );
 
   //remove and clean memory
   MeasurementNode * toRemove = temp->next;

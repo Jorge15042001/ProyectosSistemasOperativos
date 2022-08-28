@@ -9,7 +9,7 @@ OBJ_DIR_1 := build/obj/sensor
 SRC_FILES_1 := $(wildcard $(SRC_DIR_1)/*.c)
 OBJ_FILES_1 := $(patsubst $(SRC_DIR_1)/%.c,$(OBJ_DIR_1)/%.o,$(SRC_FILES_1))
 
-CXXFLAGS_1 := 
+CXXFLAGS_1 :=
 
 $(OBJ_DIR_1)/%.o: $(SRC_DIR_1)/%.c
 	mkdir -p $(OBJ_DIR_1)
@@ -26,7 +26,7 @@ OBJ_DIR_2 := build/obj/controller
 SRC_FILES_2 := $(wildcard $(SRC_DIR_2)/*.c)
 OBJ_FILES_2 := $(patsubst $(SRC_DIR_2)/%.c,$(OBJ_DIR_2)/%.o,$(SRC_FILES_2))
 
-CXXFLAGS_2 := -lpthread -lm -g
+CXXFLAGS_2 := -lpthread -lm -g -Wall -Wextra
 
 $(OBJ_DIR_2)/%.o: $(SRC_DIR_2)/%.c
 	mkdir -p $(OBJ_DIR_2)

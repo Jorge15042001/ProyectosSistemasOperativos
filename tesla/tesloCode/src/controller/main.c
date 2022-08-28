@@ -16,6 +16,7 @@ int main() {
     // on each connection
     const int clientFD = acceptConnection(ServerFD);
     ConnectionNode * sensorConnection = registerNewConnection(&connections,clientFD);
+    sensorConnection->isOpen = 1;
     initList(&sensorConnection->measurements);
     // start a new thread to handle the connection
     if (pthread_create(&(sensorConnection->listenNode), NULL, serveConection, sensorConnection) != 0) {

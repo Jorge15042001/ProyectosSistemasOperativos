@@ -1,6 +1,7 @@
 #include "socketHandler.h"
 #include "measurement.h"
 #include "measurementList.h"
+#include "utility.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -66,155 +67,19 @@ socketMeasureReaing readFromSocket(const int clientFD) {
   return response;
 }
 
-long getElapsedMicroSeconds(struct timeval t0, struct timeval t1) {
-  const long secs_used = (t1.tv_sec - t0.tv_sec);
-  const long micros_used = ((secs_used * 1000000) + t1.tv_usec) - (t0.tv_usec);
-  return micros_used;
-}
-
-typedef struct {
-  int sensorType;
-  double avg;
-  double stdDev;
-  double weight;
-} AvgMeasurement;
-
-typedef struct {
-  double valueLid;
-  double valueAcc;
-  double valueGPS;
-  struct timeval time;
-} FinalMeasurement;
-
-double computeAvg(ConnectionNode *const node, const int delta_t,
-                  struct timeval tf) {
-  double sum = 0;
-  size_t elements = 0;
-
-  pthread_mutex_lock(&node->measurements.lock);
-  MeasurementNode *nodeMeasure = node->measurements.first;
-  pthread_mutex_unlock(&node->measurements.lock);
-  while (nodeMeasure != NULL) {
-    if (getElapsedMicroSeconds(nodeMeasure->measure.measurementTime, tf) <
-        delta_t) {
-      sum += nodeMeasure->measure.sensorReading;
-      elements++;
-    }
-    nodeMeasure = nodeMeasure->next;
-  }
-  return sum / elements;
-}
-double computeStdDev(ConnectionNode *const node, const double avg,
-                     const int delta_t, struct timeval tf) {
-  double sumDev = 0;
-  size_t elements = 0;
-
-  pthread_mutex_lock(&node->measurements.lock);
-  MeasurementNode *nodeMeasure = node->measurements.first;
-  pthread_mutex_unlock(&node->measurements.lock);
-
-  while (nodeMeasure != NULL) {
-    if (getElapsedMicroSeconds(nodeMeasure->measure.measurementTime, tf) <
-        delta_t) {
-      const double error = nodeMeasure->measure.sensorReading - avg;
-      sumDev += error * error;
-      elements++;
-      /** printf("error %d %ld
-       * %lf\n",nodeMeasure->measure.sensorType,elements,sumDev); */
-    }
-    nodeMeasure = nodeMeasure->next;
-  }
-  return sqrt(sumDev / elements);
-}
-
-int getSensorType(ConnectionNode *const node) {
-  MeasurementNode *meNode = node->measurements.first;
-  if (meNode)
-    return meNode->measure.sensorType;
-  return -1;
-}
-
-double computeTotalError(const AvgMeasurement *const data, const size_t length,
-                         const int sensorType) {
-
-  double sum = 0;
-  for (size_t i = 0; i < length; i++) {
-    if (data[i].sensorType == sensorType) {
-      sum += data[i].stdDev;
-    }
-  }
-  return sum;
-}
-
-double computeLinearCombination(const AvgMeasurement *const data,
-                                const size_t length, const int sensorType) {
-  double result = 0;
-  for (size_t i = 0; i < length; i++) {
-    if (data[i].sensorType == sensorType) {
-      result += data[i].avg * data[i].weight;
-    }
-  }
-  /** printf("\nresult %d -> %lf * %lf  =
-   * %lf\n",sensorType,data[i].avg,data[i].weight,result); */
-  return result;
-}
-
-FinalMeasurement computeFinalMeasurement(const ConnectionList *const list,
-                                         const int delta_t) {
-  FinalMeasurement result;
-  gettimeofday(&result.time, NULL);
-
-  const size_t length = list->length;
-  AvgMeasurement avgs[length];
-
-  ConnectionNode *node = list->first;
-  for (size_t i = 0; i < length; i++, node = node->next) {
-    avgs[i].sensorType = getSensorType(node);
-    avgs[i].avg = computeAvg(node, delta_t, result.time);
-    avgs[i].stdDev = computeStdDev(node, avgs[i].avg, delta_t, result.time);
-  }
-
-  const double totalErros[] = {0, computeTotalError(avgs, length, 1),
-                               computeTotalError(avgs, length, 2)};
-
-  for (size_t i = 0; i < length; i++) {
-    if (avgs[i].sensorType < 1)
-      continue;
-    avgs[i].weight = 1 - avgs[i].stdDev / totalErros[avgs[i].sensorType];
-    /** printf("%ld: %lf\n",i,avgs[i].stdDev); */
-  }
-
-  result.valueLid = -1; // TODO:
-  result.valueGPS = computeLinearCombination(avgs, length, 1);
-  result.valueAcc = computeLinearCombination(avgs, length, 2);
-
-  /** printf("computed: %lf\n",result.valueAcc); */
-
-  return result;
-}
-int computeDeltaT(const MeasurementList *const list) {
-  struct timeval t0 = list->first->measure.measurementTime;
-  MeasurementNode *node = list->first;
-  if (node == NULL)
-    return 500000;
-  while (node->next != NULL)
-    node = node->next;
-  struct timeval t1 = node->measure.measurementTime;
-
-  return getElapsedMicroSeconds(t0, t1) / list->length;
-}
-
 typedef struct {
   ConnectionList *list;
-  int delta_t;
+  long delta_t;
   FinalMeasurement result;
 
 } threadArgs;
 void *threadComputeFinalMeasurement(void *params) {
   threadArgs *threadData = params;
   FinalMeasurement result =
-      computeFinalMeasurement(threadData->list, threadData->delta_t);
+      computeFinalMeasurement(threadData->list, threadData->delta_t*2);
   threadData->result = result;
+  printf("Finalizado calculo de la medicion\n");
+  pthread_exit(0);
 }
 
 void *threadSave(void *params) {
@@ -228,6 +93,9 @@ void *threadSave(void *params) {
           threadData->result.valueLid, threadData->result.valueGPS,
           threadData->result.valueAcc);
   fclose(log);
+
+  printf("Medicion {%lf, %lf, %lf} guardado en disco\n",threadData->result.valueLid,threadData->result.valueGPS,threadData->result.valueAcc);
+  pthread_exit(0);
 }
 void *threadClean(void *params) {
   threadArgs *threadData = params;
@@ -236,7 +104,7 @@ void *threadClean(void *params) {
   gettimeofday(&now, NULL);
 
   // todo lo que esta almenos 3 delta_t en el pasado se borra
-  const int removeDeltaT = threadData->delta_t * 3;
+  const int removeDeltaT = threadData->delta_t * 6;
   ConnectionNode *conn = threadData->list->first;
   // para cada una de las connexiones
   while (conn != NULL) {
@@ -250,34 +118,65 @@ void *threadClean(void *params) {
       measure = measure->next;
     }
     removeEverythingAfter(&conn->measurements, removeAfter);
+    // cerrar conexion si no ha llegado ningun paquete en mucho tiempo
+    if ( conn->isOpen && conn->measurements.first && getElapsedMicroSeconds(conn->measurements.first->measure.measurementTime , now)>removeDeltaT){
+      printf("Cerrada la conexion para sensor %d -> por inanctividad\n",conn->measurements.first->measure.sensorId );
+      close(conn->clientFD);
+      conn->isOpen = 0;
+    }
+
     conn = conn->next;
   }
+  printf("Proceso de limpieza terminado\n");
+  pthread_exit(0);
 }
 
 void *serveConection(void *param) {
   ConnectionNode *connNode = (ConnectionNode *)param;
+  printf("Nuevo sensor Detectado\n");
   while (1) {
+
     const socketMeasureReaing measurement = readFromSocket(connNode->clientFD);
     if (measurement.error)
       break;
-    /** printMeasurementServer(&measurement.value); */
+    printf("Nuevo dato recibido del sensor %03d de tipo %d -> %5d\n",measurement.value.sensorId,measurement.value.sensorType,measurement.value.sensorReading);
+    pthread_mutex_lock(&connNode->measurements.lock);
     addMeasurement(&connNode->measurements, &measurement.value);
+    pthread_mutex_unlock(&connNode->measurements.lock);
+
     if (measurement.value.sensorType == 0) {
-      const int delta_t = computeDeltaT(&connNode->measurements);
-      threadArgs tArgs = {&connections, delta_t * 2};
+      printf("Nuevo dato de LIDAR recibido\n");
+      const long delta_t = computeDeltaT(&connNode->measurements);
+      usleep(delta_t/2);
+
+      threadArgs tArgs;
+      tArgs.list = &connections;
+      tArgs.delta_t = delta_t/2;
+
+      printf("Iniciando calculo de la medicion\n");
       pthread_t tidCompute;
       pthread_create(&tidCompute, NULL, threadComputeFinalMeasurement, &tArgs);
       pthread_join(tidCompute, NULL);
       // set vaule of lidar
       tArgs.result.valueLid = measurement.value.sensorReading;
-      pthread_t tidSave;
-      pthread_create(&tidSave, NULL, threadSave, &tArgs);
 
+      if (tArgs.result.isValid){
+        printf("Iniciando proceso de almacenamiento de datos\n");
+        pthread_t tidSave;
+        pthread_create(&tidSave, NULL, threadSave, &tArgs);
+      }
+      else {
+        printf("La medicion no valida ignorando dato LIDAR\n");
+      }
+      printf("Iniciando proceso de limpieza\n");
       pthread_t tidClean;
       pthread_create(&tidClean, NULL, threadClean, &tArgs);
     }
   }
   close(connNode->clientFD);
+  connNode->isOpen = 0;
+  printf("Cerrada la conexion para sensor %d -> por desconexion \n",connNode->measurements.first->measure.sensorId );
+  pthread_exit(0);
 }
 
 int acceptConnection(const int ServerFD) {
@@ -287,7 +186,6 @@ int acceptConnection(const int ServerFD) {
   // accept new cliente
   int client_sockfd =
       accept(ServerFD, (struct sockaddr *)&clientAdrss, &clientLen);
-  printf("Nueva conexion aceptada\n");
   return client_sockfd;
 }
 ConnectionNode *registerNewConnection(ConnectionList *const connList,
